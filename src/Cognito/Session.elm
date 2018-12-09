@@ -1,5 +1,12 @@
-module Cognito.Session exposing (Session, getRefreshToken, isValid, sessionDecoder)
+module Cognito.Session exposing
+    ( Session
+    , decoderAuthenticationResult
+    , decoderSession
+    , getRefreshToken
+    , isValid
+    )
 
+import Base64
 import Json.Decode as Decode exposing (Decoder, bool, field, int, map, map2, map4, string, succeed)
 import Json.Decode.Pipeline exposing (required)
 import Task exposing (Task)
@@ -139,10 +146,63 @@ type alias Session =
     }
 
 
-sessionDecoder : Decoder Session
-sessionDecoder =
+decoderSession : Decoder Session
+decoderSession =
     map4 Session
         (field "accessToken" cognitoAccessTokenDecoder)
         (field "clockDrift" int)
         (field "idToken" cognitoIdTokenDecoder)
         (field "refreshToken" cognitoRefreshTokenDecoder)
+
+
+
+--
+
+
+type alias AuthenticationResult =
+    { accessToken : String
+    , expiresIn : Int
+    , idToken : String
+    , tokenType : String
+    }
+
+
+base64Decode : String -> String
+base64Decode token =
+    token
+        |> String.split "."
+        |> List.drop 1
+        |> List.head
+        |> Maybe.withDefault ""
+        |> Base64.decode
+        |> Result.withDefault ""
+
+
+decoderAuthenticationResult : Decoder Session
+decoderAuthenticationResult =
+    Decode.field "AuthenticationResult" <|
+        Decode.map4 Session
+            (Decode.field "AccessToken" Decode.string
+                |> Decode.andThen
+                    (\token ->
+                        case Decode.decodeString cognitoAccessTokenPayloadDecoder (base64Decode token) of
+                            Ok payload ->
+                                Decode.succeed (CognitoAccessToken token payload)
+
+                            Err e ->
+                                Decode.fail "Failed to decode accessToken"
+                    )
+            )
+            (Decode.succeed 0)
+            (Decode.field "IdToken" Decode.string
+                |> Decode.andThen
+                    (\token ->
+                        case Decode.decodeString cognitoIdTokenPayloadDecoder (base64Decode token) of
+                            Ok payload ->
+                                Decode.succeed (CognitoIdToken token payload)
+
+                            Err e ->
+                                Decode.fail "Failed to decode idToken"
+                    )
+            )
+            (Decode.field "TokenType" Decode.string |> Decode.map CognitoRefreshToken)

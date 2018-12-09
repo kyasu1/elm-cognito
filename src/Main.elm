@@ -1,15 +1,16 @@
 module Main exposing (Msg(..), main, update, view)
 
 import Api
+import Base64
 import Browser
 import Browser.Navigation as Nav exposing (Key)
 import Cognito
-import Cognito.Session exposing (Session, sessionDecoder)
+import Cognito.Session exposing (Session, decoderSession)
 import Dashboard
 import Element exposing (..)
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Encode as E exposing (Value)
+import Json.Encode as Encode exposing (Value)
 import Page.Home as Home
 import Ports
 import Route exposing (Route)
@@ -31,7 +32,7 @@ init : Value -> Url -> Key -> ( Model, Cmd Msg )
 init value url key =
     let
         sessionMaybe =
-            Decode.decodeValue (Decode.field "session" sessionDecoder) value
+            Decode.decodeValue (Decode.field "session" decoderSession) value
                 |> Result.toMaybe
     in
     changeRouteTo (Route.parseUrl url)
@@ -59,7 +60,7 @@ type Msg
     | DashboardMsg Dashboard.Msg
     | SessionUpdated Session
     | ClickedRefreshSession Session
-    | GotRefreshSession (Result Api.Error Api.AuthenticationResult)
+    | GotRefreshSession Session (Result Api.Error Session)
 
 
 changeRouteTo : Route -> Model -> ( Model, Cmd Msg )
@@ -73,6 +74,17 @@ changeRouteTo route model =
                             Dashboard.initHome session
                     in
                     ( { model | page = Dashboard initModel }, Cmd.map DashboardMsg cmd )
+
+                Route.SignOut ->
+                    ( { model | page = Loading, session = Nothing }
+                    , Cmd.batch
+                        [ Ports.elmToJs <|
+                            { tag = "SignOut"
+                            , value = Encode.null
+                            }
+                        , Route.replaceUrl model.key Route.SignIn
+                        ]
+                    )
 
                 _ ->
                     let
@@ -95,27 +107,45 @@ changeRouteTo route model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg |> Debug.log "Main msg : " of
+    case msg of
+        OnUrlChange url ->
+            changeRouteTo (Route.parseUrl url) model
+
+        OnUrlRequest urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External url ->
+                    ( model, Nav.load url )
+
         CognitoMsg cognitoMsg ->
             case model.page of
                 Cognito stateCognito ->
                     let
                         ( newModel, cmd ) =
-                            Cognito.update cognitoMsg stateCognito
+                            Cognito.update SessionUpdated CognitoMsg cognitoMsg stateCognito
                     in
-                    ( { model | page = Cognito newModel }, Cmd.map CognitoMsg cmd )
+                    ( { model | page = Cognito newModel }, cmd )
 
                 _ ->
                     noCmd model
 
+        SessionUpdated session ->
+            ( { model | session = Just session }, Route.replaceUrl model.key Route.Home )
+
         ClickedRefreshSession session ->
-            ( model, Api.refreshSession session GotRefreshSession )
+            ( model, Api.refreshSession session (GotRefreshSession session) )
 
-        GotRefreshSession (Ok session) ->
-            ( model, Cmd.none )
+        GotRefreshSession oldSession (Ok session) ->
+            let
+                newSession =
+                    { oldSession | accessToken = session.accessToken, idToken = session.idToken }
+            in
+            ( { model | session = Just newSession }, Cmd.none )
 
-        GotRefreshSession (Err error) ->
-            ( model, Cmd.none )
+        GotRefreshSession oldSession (Err error) ->
+            ( { model | session = Nothing }, Cmd.none )
 
         _ ->
             noCmd model
@@ -157,7 +187,7 @@ view model =
 fullScreenLayout : Element Msg -> List (Html Msg)
 fullScreenLayout content =
     [ layout []
-        (column [ width fill, height fill, centerX, centerY ]
+        (column [ centerX, centerY ]
             [ content ]
         )
     ]

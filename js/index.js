@@ -1,4 +1,4 @@
-import '../css/style.scss';
+// import '../css/style.scss';
 import { Elm } from '../src/Main.elm';
 import { CognitoUserPool, CognitoUserAttribute, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 
@@ -52,18 +52,17 @@ function start (session) {
         });
         cognitoUser.authenticateUser(authenticationDetails, {
           onSuccess: function(result) {
-            app.ports.signInResponse.send({
-              accessToken: result.getAccessToken().getJwtToken(),
-              refreshToken: result.getRefreshToken().getToken(),
-              idToken: result.getIdToken().getJwtToken(),
-              clockDrift: result.getClockDrift()
-            });
+            app.ports.signInResponse.send(result);
           },
           onFailure: function(error) {
             app.ports.signInResponse.send(error);
           }
         });
         break;
+      case 'SignOut':
+        if (currentUser != null) {
+          currentUser.signOut();
+        }
     }
   });
 }

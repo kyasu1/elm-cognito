@@ -6,6 +6,7 @@ import Element exposing (..)
 import Element.Input as Input
 import Html exposing (Html)
 import Page.Home as Home
+import Route
 
 
 type alias Model =
@@ -60,7 +61,14 @@ view : Model -> (Session -> msg) -> List (Html msg)
 view model toMsg =
     [ layout []
         (column []
-            [ row [] [ text "HEADER", Input.button [] { onPress = Just (toMsg model.session), label = text "更新" } ]
+            [ row [ padding 10, spacing 10 ]
+                [ text "HEADER"
+                , Input.button [] { onPress = Just (toMsg model.session), label = text "更新" }
+                , link []
+                    { url = Route.pathFor Route.SignOut
+                    , label = text "サインアウト"
+                    }
+                ]
             , row [] [ text "BODY" ]
             ]
         )

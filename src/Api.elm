@@ -1,16 +1,15 @@
 module Api exposing
-    ( AuthenticationResult
-    , Error
+    ( Error
     , SignUpResponse
     , clientId
     , confirmSignUp
-    , decoderAuthenticationResult
     , graphql
     , refreshSession
     , signUp
     , userPoolId
     )
 
+import Base64
 import Cognito.Session as Session exposing (Session)
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -115,25 +114,7 @@ confirmSignUp { username, code } toMsg =
         }
 
 
-type alias AuthenticationResult =
-    { accessToken : String
-    , expiresIn : Int
-    , idToken : String
-    , tokenType : String
-    }
-
-
-decoderAuthenticationResult : Decoder AuthenticationResult
-decoderAuthenticationResult =
-    Decode.field "AuthenticationResult" <|
-        Decode.map4 AuthenticationResult
-            (Decode.field "AccessToken" Decode.string)
-            (Decode.field "ExpiresIn" Decode.int)
-            (Decode.field "IdToken" Decode.string)
-            (Decode.field "TokenType" Decode.string)
-
-
-refreshSession : Session -> (Result Error AuthenticationResult -> msg) -> Cmd msg
+refreshSession : Session -> (Result Error Session -> msg) -> Cmd msg
 refreshSession session toMsg =
     let
         body =
@@ -158,7 +139,7 @@ refreshSession session toMsg =
         , headers = headers
         , url = endpoint
         , body = Http.stringBody "application/x-amz-json-1.1" body
-        , expect = expectJson toMsg decoderAuthenticationResult
+        , expect = expectJson toMsg Session.decoderAuthenticationResult
         , timeout = Nothing
         , tracker = Nothing
         }

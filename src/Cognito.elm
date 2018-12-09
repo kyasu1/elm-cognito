@@ -9,13 +9,18 @@ module Cognito exposing
     )
 
 import Api
-import Cognito.Session as Session
-import Element exposing (Element, text)
+import Cognito.Session as Session exposing (Session)
+import Color
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import Ports
+import Task
 
 
 type alias SignInModel =
@@ -63,10 +68,11 @@ type Msg
     | GotSignUp String (Result Api.Error Api.SignUpResponse)
     | GotConfirmSignUp (Result Api.Error String)
     | GotSignIn Value
+    | SignOut
 
 
-update : Msg -> State -> ( State, Cmd Msg )
-update msg state =
+update : (Session -> parentMsg) -> (Msg -> parentMsg) -> Msg -> State -> ( State, Cmd parentMsg )
+update onSessionMsg toParentMsg msg state =
     case msg of
         ChangedSignIn newModel ->
             ( SignIn newModel, Cmd.none )
@@ -84,9 +90,9 @@ update msg state =
             )
 
         GotSignIn value ->
-            case Decode.decodeValue Api.decoderAuthenticationResult value |> Debug.log "GotSignIn" of
+            case Decode.decodeValue Session.decoderSession value of
                 Ok session ->
-                    ( state, Cmd.none )
+                    ( state, Task.succeed (onSessionMsg session) |> Task.perform identity )
 
                 Err e ->
                     ( state, Cmd.none )
@@ -102,6 +108,7 @@ update msg state =
                 , email = newModel.email
                 }
                 (GotSignUp newModel.username)
+                |> Cmd.map toParentMsg
             )
 
         GotSignUp username (Ok response) ->
@@ -124,13 +131,23 @@ update msg state =
                 , code = newModel.code
                 }
                 GotConfirmSignUp
+                |> Cmd.map toParentMsg
             )
 
         GotConfirmSignUp (Ok response) ->
+            -- ( state, Route.replaceUrl model.key Route.SignIn )
             ( state, Cmd.none )
 
         GotConfirmSignUp (Err e) ->
             ( state, Cmd.none )
+
+        SignOut ->
+            ( state
+            , Ports.elmToJs <|
+                { tag = "SignOut"
+                , value = Encode.null
+                }
+            )
 
 
 subscriptions : State -> Sub Msg
@@ -153,22 +170,56 @@ view state =
 
 viewSignIn : SignInModel -> Element Msg
 viewSignIn model =
-    Element.column
-        []
-        [ Input.username []
-            { onChange = \s -> ChangedSignIn { model | username = s }
-            , text = model.username
-            , placeholder = Nothing
-            , label = Input.labelAbove [] (text "ユーザー名")
-            }
-        , Input.currentPassword []
-            { onChange = \s -> ChangedSignIn { model | password = s }
-            , text = model.password
-            , placeholder = Nothing
-            , label = Input.labelAbove [] (text "パスワード")
-            , show = False
-            }
-        , Input.button []
+    column
+        [ spacing 20 ]
+        [ column [ spacing 10 ]
+            [ Input.username
+                [ Border.color <| Color.dark Color.red
+                , Background.color <| Color.lighter Color.yellow
+                ]
+                { onChange = \s -> ChangedSignIn { model | username = s }
+                , text = model.username
+                , placeholder = Nothing
+                , label = Input.labelAbove [ Font.size 16 ] (text "ユーザー名")
+                }
+            , el
+                [ Font.size 12
+                , Font.color <| Color.dark Color.red
+                ]
+              <|
+                text "ユーザー名を入力してください"
+            ]
+        , column [ spacing 10 ]
+            [ Input.currentPassword []
+                { onChange = \s -> ChangedSignIn { model | password = s }
+                , text = model.password
+                , placeholder = Nothing
+                , label = Input.labelAbove [ Font.size 16 ] (text "パスワード")
+                , show = False
+                }
+            , el
+                [ Font.size 12
+                , Font.color <| Color.dark Color.red
+                ]
+              <|
+                text ""
+            ]
+        , Input.button
+            [ centerX
+            , Font.color <| Color.white
+
+            -- , Border.solid
+            -- , Border.width 2
+            -- , Border.color <| Color.dark Color.teal
+            , Border.rounded 4
+            , Background.color <| Color.dark Color.teal
+            , Font.size 16
+            , padding 8
+            , pointer
+            , mouseOver
+                [ Background.color <| Color.light Color.teal
+                ]
+            ]
             { onPress = Just (ClickedSignIn model)
             , label = text "ログイン"
             }
@@ -208,7 +259,7 @@ viewSignUp model =
 viewConfirmSignUp : ConfirmSignUpModel -> Element Msg
 viewConfirmSignUp model =
     Element.column
-        []
+        [ spacing 10 ]
         [ Element.column []
             [ text "ユーザー名"
             , text model.username
