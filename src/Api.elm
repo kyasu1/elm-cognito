@@ -1,4 +1,15 @@
-module Api exposing (Error, SignUpResponse, clientId, confirmSignUp, graphql, signUp, userPoolId)
+module Api exposing
+    ( AuthenticationResult
+    , Error
+    , SignUpResponse
+    , clientId
+    , confirmSignUp
+    , decoderAuthenticationResult
+    , graphql
+    , refreshSession
+    , signUp
+    , userPoolId
+    )
 
 import Cognito.Session as Session exposing (Session)
 import Http
@@ -104,7 +115,25 @@ confirmSignUp { username, code } toMsg =
         }
 
 
-refreshSession : Session -> (Result Error Session -> msg) -> Cmd msg
+type alias AuthenticationResult =
+    { accessToken : String
+    , expiresIn : Int
+    , idToken : String
+    , tokenType : String
+    }
+
+
+decoderAuthenticationResult : Decoder AuthenticationResult
+decoderAuthenticationResult =
+    Decode.field "AuthenticationResult" <|
+        Decode.map4 AuthenticationResult
+            (Decode.field "AccessToken" Decode.string)
+            (Decode.field "ExpiresIn" Decode.int)
+            (Decode.field "IdToken" Decode.string)
+            (Decode.field "TokenType" Decode.string)
+
+
+refreshSession : Session -> (Result Error AuthenticationResult -> msg) -> Cmd msg
 refreshSession session toMsg =
     let
         body =
@@ -120,7 +149,7 @@ refreshSession session toMsg =
                 |> Encode.encode 0
 
         headers =
-            [ Http.header "X-Amz-Target" "AWSCognitoIdentityProviderService.InitialAuth"
+            [ Http.header "X-Amz-Target" "AWSCognitoIdentityProviderService.InitiateAuth"
             , Http.header "X-Amz-User-Agent" "aws-amplify/0.1.x js"
             ]
     in
@@ -129,7 +158,7 @@ refreshSession session toMsg =
         , headers = headers
         , url = endpoint
         , body = Http.stringBody "application/x-amz-json-1.1" body
-        , expect = expectJson toMsg Session.sessionDecoder
+        , expect = expectJson toMsg decoderAuthenticationResult
         , timeout = Nothing
         , tracker = Nothing
         }

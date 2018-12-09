@@ -84,7 +84,7 @@ update msg state =
             )
 
         GotSignIn value ->
-            case Decode.decodeValue Session.sessionDecoder value of
+            case Decode.decodeValue Api.decoderAuthenticationResult value |> Debug.log "GotSignIn" of
                 Ok session ->
                     ( state, Cmd.none )
 

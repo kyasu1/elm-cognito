@@ -52,7 +52,7 @@ function start (session) {
         });
         cognitoUser.authenticateUser(authenticationDetails, {
           onSuccess: function(result) {
-            toElm(app, tag, {
+            app.ports.signInResponse.send({
               accessToken: result.getAccessToken().getJwtToken(),
               refreshToken: result.getRefreshToken().getToken(),
               idToken: result.getIdToken().getJwtToken(),
@@ -60,7 +60,7 @@ function start (session) {
             });
           },
           onFailure: function(error) {
-            toElm(app, tag, error);
+            app.ports.signInResponse.send(error);
           }
         });
         break;
