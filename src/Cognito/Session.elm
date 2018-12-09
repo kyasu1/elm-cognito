@@ -1,4 +1,4 @@
-module Cognito.Session exposing (Session, isValid, sessionDecoder)
+module Cognito.Session exposing (Session, getRefreshToken, isValid, sessionDecoder)
 
 import Json.Decode as Decode exposing (Decoder, bool, field, int, map, map2, map4, string, succeed)
 import Json.Decode.Pipeline exposing (required)

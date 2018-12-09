@@ -15,7 +15,7 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Ports.jsToElm GotJsToElm
+        , subscriptions = \model -> Cognito.subscriptions model.cognito |> Sub.map CognitoMsg
         }
 
 
@@ -23,10 +23,10 @@ init : Value -> ( Model, Cmd Msg )
 init value =
     case Decoder.decodeValue (Decoder.field "session" sessionDecoder) value of
         Ok session ->
-            ( { session = Just session, cognito = Cognito.initSignIn }, Cmd.none )
+            ( { session = Just session, cognito = Cognito.initSignUp }, Cmd.none )
 
         _ ->
-            ( { session = Nothing, cognito = Cognito.initSignIn }, Cmd.none )
+            ( { session = Nothing, cognito = Cognito.initSignUp }, Cmd.none )
 
 
 type alias Model =
@@ -49,15 +49,15 @@ update msg model =
                     Cognito.update cognitoMsg model.cognito
             in
             ( { model | cognito = newModel }, Cmd.map CognitoMsg cmd )
-        GotJsToElm data ->
 
+        -- GotJsToElm data ->
         _ ->
             ( model, Cmd.none )
 
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "test"
+    { title = "AWS Cognito"
     , body =
         [ layout []
             (column [ width fill, height fill, centerX, centerY ]

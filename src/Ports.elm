@@ -3,6 +3,7 @@ port module Ports exposing
     , elmToJs
     , encode
     , jsToElm
+    , signInResponse
     )
 
 import Json.Encode as Encode exposing (Value)
@@ -26,3 +27,6 @@ port elmToJs : Data -> Cmd msg
 
 
 port jsToElm : (Data -> msg) -> Sub msg
+
+
+port signInResponse : (Value -> msg) -> Sub msg
