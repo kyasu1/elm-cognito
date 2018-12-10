@@ -168,61 +168,91 @@ view state =
             viewConfirmSignUp model
 
 
+inputError : Bool -> List (Attribute msg)
+inputError cond =
+    if cond then
+        [ Border.color <| Color.dark Color.red
+        , Background.color <| Color.lighter Color.yellow
+        ]
+
+    else
+        []
+
+
+error : Bool -> String -> Element msg
+error cond message =
+    el [ Font.size 12, Font.color <| Color.dark Color.red ]
+        (if cond then
+            text message
+
+         else
+            text ""
+        )
+
+
 viewSignIn : SignInModel -> Element Msg
 viewSignIn model =
+    let
+        usernameError =
+            model.username == ""
+
+        passwordError =
+            model.password == ""
+    in
     column
         [ spacing 20 ]
-        [ column [ spacing 10 ]
+        [ el [ centerX ] <| text "システムログイン"
+        , column [ spacing 10 ]
             [ Input.username
-                [ Border.color <| Color.dark Color.red
-                , Background.color <| Color.lighter Color.yellow
-                ]
+                (inputError usernameError
+                    ++ [ width (px 300)
+                       ]
+                )
                 { onChange = \s -> ChangedSignIn { model | username = s }
                 , text = model.username
-                , placeholder = Nothing
-                , label = Input.labelAbove [ Font.size 16 ] (text "ユーザー名")
+                , placeholder = Just (Input.placeholder [] (text "ID"))
+                , label = Input.labelHidden "ユーザー名"
                 }
-            , el
-                [ Font.size 12
-                , Font.color <| Color.dark Color.red
-                ]
-              <|
-                text "ユーザー名を入力してください"
+            , error usernameError "ユーザー名を入力してください"
             ]
         , column [ spacing 10 ]
-            [ Input.currentPassword []
+            [ Input.currentPassword
+                [ width (px 300)
+                ]
                 { onChange = \s -> ChangedSignIn { model | password = s }
                 , text = model.password
-                , placeholder = Nothing
-                , label = Input.labelAbove [ Font.size 16 ] (text "パスワード")
+                , placeholder = Just (Input.placeholder [] (text "パスワード"))
+                , label = Input.labelHidden "パスワード"
                 , show = False
                 }
-            , el
-                [ Font.size 12
-                , Font.color <| Color.dark Color.red
-                ]
-              <|
-                text ""
+            , error False "パスワードを入力してください"
             ]
         , Input.button
             [ centerX
             , Font.color <| Color.white
-
-            -- , Border.solid
-            -- , Border.width 2
-            -- , Border.color <| Color.dark Color.teal
-            , Border.rounded 4
+            , Border.rounded 8
             , Background.color <| Color.dark Color.teal
             , Font.size 16
             , padding 8
+            , width (px 200)
             , pointer
             , mouseOver
-                [ Background.color <| Color.light Color.teal
+                [ Background.color <| Color.base Color.teal
                 ]
             ]
             { onPress = Just (ClickedSignIn model)
-            , label = text "ログイン"
+            , label = el [ centerX ] <| text "ログイン"
             }
+        , el
+            [ Border.widthEach
+                { bottom = 1
+                , left = 0
+                , right = 0
+                , top = 0
+                }
+            ]
+          <|
+            link [] { url = "/signup", label = text "新規登録はこちら" }
         ]
 
 
