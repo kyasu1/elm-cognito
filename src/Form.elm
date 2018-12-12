@@ -1,75 +1,42 @@
 module Form exposing (Form)
 
+import Validate exposing (..)
 
-type F
-    = Username
-    | Password
-    | Age
-    | Gender
+type alias Model =
+    List (Field, FieldState a)
 
-
-type alias M =
-    { form : Form F }
-
-
-type Form a b
-    = Form (List ( b, Value a ))
+type alias FieldState a =
+    { touched : Bool
+    , initial : a
+    , current : a
+    }
 
 
-
--- type FieldState
---     = FieldState
---         { value : Value a
---         , focused : Bool
---         }
-
-
-type Value a
-    = String String
-    | Bool Bool
-    | Int Int
+type alias Form error model =
+    { model : model
+    , errors : List error
+    , validator : Validator error model
+    }
+type Validator a b =
+    Validator (State)
 
 
-fromString : String -> Value String
-fromString string =
-    String string
+validate : Validate (form -> model) model
 
+type alias State value =
+  { touched : Bool
+  , errors : List String
+  , value : value }
 
-fromBool : Bool -> Value Bool
-fromBool bool =
-    Bool bool
+type Validator a b =
+    Validator (State a -> State b)
 
+type Parser a b =
+    Parser (State a -> List (State b))
 
-fromInt : Int -> Value Int
-fromInt int =
-    Int int
+nonEmpty : Validator String -> String
+nonEmpty =
 
-
-toString : Value String -> Maybe String
-toString value =
-    case value of
-        String string ->
-            Just string
-
-        _ ->
-            Nothing
-
-
-toBool : Value Bool -> Maybe Bool
-toBool value =
-    case value of
-        Bool bool ->
-            Just bool
-
-        _ ->
-            Nothing
-
-
-toInt : Value Int -> Maybe Int
-toInt value =
-    case value of
-        Int int ->
-            Just int
-
-        _ ->
-            Nothing
+string : Parser (String -> a) a
+string =
+    Parser (State (String ->a) -> List (State b))
