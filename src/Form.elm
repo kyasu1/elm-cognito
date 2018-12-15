@@ -320,13 +320,32 @@ updateFieldFormat a fields =
 
 
 type Msg a
-    = HandleInput a String
+    = HandleChange a String
     | HandleClick a String
     | HandleCheck a Bool
     | HandleFocus a
     | HandleBlur a
-    | HandleChange a String
     | HandleSubmit
+
+
+blured : a -> Msg a
+blured a =
+    HandleBlur a
+
+
+checked : a -> Bool -> Msg a
+checked a bool =
+    HandleCheck a bool
+
+
+stringChanged : a -> String -> Msg a
+stringChanged a string =
+    HandleChange a string
+
+
+valueChanged : a -> value -> Msg a
+valueChanged a value =
+    HandleValueChange a value
 
 
 {-| -}
@@ -338,7 +357,7 @@ update msg (Form model) =
 updateInternal : Msg a -> Model a -> Model a
 updateInternal msg model =
     case msg of
-        HandleInput field value ->
+        HandleChange field value ->
             updateStringField field value model
 
         HandleClick field value ->
@@ -353,9 +372,6 @@ updateInternal msg model =
                     Validator.errors model.validator (Form newModel)
             in
             { newModel | errors = errors }
-
-        HandleChange field value ->
-            updateStringField field value model
 
         HandleFocus a ->
             { model | focus = Just a }
