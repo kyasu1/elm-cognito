@@ -1,5 +1,6 @@
 module Model exposing (Customer)
 
+import Date exposing (Date)
 import Element exposing (..)
 import Element.Input as Input
 
@@ -14,71 +15,11 @@ type OccupationType
     = Student { college : Maybe String }
 
 
-type Era
-    = Meiji
-    | Taisho
-    | Showa
-    | Heisei
-    | Western
-
-
-type alias BirthdayType =
-    { era : Era
-    , year : Int
-    , month : Int
-    , day : Int
-    }
-
-
-updateYear : BirthdayType -> String -> Maybe BirthdayType
-updateYear birthday string =
-    string
-        |> String.toInt
-        |> Maybe.andThen
-            (\year ->
-                case birthday.era of
-                    Meiji ->
-                        if year > 0 && year < 44 then
-                            Just { birthday | year = year }
-
-                        else
-                            Nothing
-
-                    Taisho ->
-                        if year > 0 && year < 15 then
-                            Just { birthday | year = year }
-
-                        else
-                            Nothing
-
-                    Showa ->
-                        if year > 0 && year < 64 then
-                            Just { birthday | year = year }
-
-                        else
-                            Nothing
-
-                    Heisei ->
-                        if year > 0 && year < 30 then
-                            Just { birthday | year = year }
-
-                        else
-                            Nothing
-
-                    Western ->
-                        if year > 0 && year < 2018 then
-                            Just { birthday | year = year }
-
-                        else
-                            Nothing
-            )
-
-
 type alias Customer =
     { name : String
     , kana : String
     , gender : GenderType
-    , birthday : BirthdayType
+    , birthday : Date
     , occupation : OccupationType
 
     -- , address : List Address
@@ -90,7 +31,7 @@ type Field
     = Name String
     | Kana String
     | Gender GenderType
-    | Birthday BirthdayType
+    | BirthdayYear String
     | Occupation OccupationType
 
 
@@ -106,7 +47,7 @@ updateField field customer =
         Gender gender ->
             { customer | gender = gender }
 
-        Birthday birthday ->
+        BirthdayYear year ->
             { customer | birthday = birthday }
 
         Occupation occupation ->
@@ -126,7 +67,7 @@ view customer =
                 }
         , Element.row [] <|
             [ Input.text []
-                { onChange = \s -> Birthday (updateYear customer.birthday s)
+                { onChange = BirthdayYear
                 , text = String.fromInt customer.birthday.year
                 , placeholder = Nothing
                 , label = Input.labelRight [] (text "年")
