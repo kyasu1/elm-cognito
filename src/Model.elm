@@ -3,6 +3,7 @@ module Model exposing (Customer)
 import Date exposing (Date)
 import Element exposing (..)
 import Element.Input as Input
+import Validate as V exposing (Validator)
 
 
 type GenderType
@@ -15,66 +16,124 @@ type OccupationType
     = Student { college : Maybe String }
 
 
+type Field a
+    = Field
+        { value : a
+        , initial : a
+        , focused : Bool
+        }
+
+
+updateField : a -> Field a -> Field a
+updateField value (Field field) =
+    Field { field | value = value }
+
+
+initField : a -> Field a -> Field a
+initField value (Field field) =
+    Field { field | value = value, initial = value }
+
+
+getValue : Field a -> a
+getValue (Field { value }) =
+    value
+
+
 type alias Customer =
-    { name : String
-    , kana : String
-    , gender : GenderType
-    , birthday : Date
-    , occupation : OccupationType
+    { name : Field String
+    , kana : Field String
+    , gender : Field GenderType
+    , birthday : Field Date
+    , occupation : Field OccupationType
 
     -- , address : List Address
     -- , mobile : Digits
     }
 
 
-type Field
+
+-- customerValidator : Validator ( FieldType, String ) Customer
+-- customerValidator =
+--     V.all
+--         [ V.ifBlank (\customer -> getValue customer.name) ( Name "", "名前を入力してください" )
+--         , V.ifBlank (.name >> getValue) ( Kana "", "かなを入力してください" )
+--         ]
+
+
+type Form a
+    = Form
+        { model : a
+        , errors : List String
+        , validator : Validator ( Msg, String ) a
+        }
+
+
+
+-- type Field
+--     = Name String
+--     | Kana String
+--     | Gender GenderType
+--     | Birthday String
+--     | Occupation OccupationType
+
+
+type Msg
     = Name String
     | Kana String
     | Gender GenderType
-    | BirthdayYear String
+    | Birthday String
     | Occupation OccupationType
 
 
-updateField : Field -> Customer -> Customer
-updateField field customer =
-    case field of
+validateName : String -> Result String String
+validateName name =
+    if name /= "" then
+        Ok name
+
+    else
+        Err "Name must not be empty"
+
+
+update : Msg -> Form Customer -> Form Customer
+update msg (Form { model, errors, validator }) =
+    case msg of
         Name name ->
-            { customer | name = name }
+            Form { model | name = updateField name model.name }
 
         Kana kana ->
-            { customer | kana = kana }
+            { model | kana = updateField kana model.kana }
 
         Gender gender ->
-            { customer | gender = gender }
+            { model | gender = updateField gender model.gender }
 
-        BirthdayYear year ->
-            { customer | birthday = birthday }
+        Birthday birthday ->
+            { model | birthday = updateField birthday model.birthday }
 
         Occupation occupation ->
-            { customer | occupation = occupation }
+            { model | occupation = updateField occupation model.occupation }
 
 
-view : Customer -> Element Field
-view customer =
+view : Customer -> Element Msg
+view form =
     Element.column []
         [ Element.el [] <|
             Input.text
                 []
                 { onChange = Name
-                , text = customer.name
+                , text = getValue form.name
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text "名前")
                 }
         , Element.row [] <|
             [ Input.text []
-                { onChange = BirthdayYear
-                , text = String.fromInt customer.birthday.year
+                { onChange = Birthday
+                , text = Date.toIsoString <| getValue form.birthday
                 , placeholder = Nothing
                 , label = Input.labelRight [] (text "年")
                 }
             ]
         , Element.el [] <|
-            case customer.occupation of
+            case getValue form.occupation of
                 Student { college } ->
                     Input.text
                         []
